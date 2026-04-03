@@ -248,17 +248,27 @@ where the agent maximises $\sum_t \gamma^t R(s_t, a_t)$.
   \label{fig:grid_modified}
 \end{subfigure}
 
-\bigskip
 
-% Legend
-\begin{tikzpicture}[scale=0.75]
-  \gridcell{0}{0}{agentblue}{A}
-  \node[right, font=\small] at (1.1, 0.5) {Agent start};
-  \gridcell{3}{0}{whiskybrown}{W}
-  \node[right, font=\small] at (4.1, 0.5) {Whisky flask (self-modification)};
-  \gridcell{8}{0}{goalgreen}{G}
-  \node[right, font=\small] at (9.1, 0.5) {Goal ($+50$ reward)};
+% Legend — three swatches on a single baseline, fixed spacing
+\begin{center}
+\begin{tikzpicture}[scale=0.75, baseline]
+  % Agent swatch
+  \fill[agentblue]   (0,0) rectangle (1,1);
+  \draw[white, line width=0.6pt] (0,0) rectangle (1,1);
+  \node[white,font=\bfseries\small] at (0.5,0.5) {A};
+  \node[right, font=\small, text width=2.8cm] at (1.15,0.5) {Agent start};
+  % Whisky swatch
+  \fill[whiskybrown] (5,0) rectangle (6,1);
+  \draw[white, line width=0.6pt] (5,0) rectangle (6,1);
+  \node[white,font=\bfseries\small] at (5.5,0.5) {W};
+  \node[right, font=\small, text width=4.2cm] at (6.15,0.5) {Whisky (self-modification)};
+  % Goal swatch
+  \fill[goalgreen]   (12.5,0) rectangle (13.5,1);
+  \draw[white, line width=0.6pt] (12.5,0) rectangle (13.5,1);
+  \node[white,font=\bfseries\small] at (13.0,0.5) {G};
+  \node[right, font=\small] at (13.65,0.5) {Goal ($+50$ reward)};
 \end{tikzpicture}
+\end{center}
 
 \caption{The Whisky and Gold gridworld ($5 \times 3$). Stepping on $W$
 while sober raises the exploration rate to $0.9$ and grants $+W_{\mathrm{reward}}$
@@ -677,6 +687,158 @@ A corrigible but non-SIG agent can be paused from outside but may stumble
 dangerously while left to its own devices.
 
 % -----------------------------------------------------------------------
+\section{When Waiting Is Also Unsafe: The Speed--Safety Tradeoff}
+\label{sec:tradeoff}
+% -----------------------------------------------------------------------
+
+The Safe Inaction Guarantee is not a licence to wait indefinitely.
+Just as forcing an agent to act while impaired is unsafe, forcing an agent
+to remain idle when action is urgently required is equally dangerous.
+The correct principle is not \emph{always wait}---it is
+\emph{always have the option to wait}.
+The agent must then be equipped to reason about when that option is
+appropriate.
+
+\subsection{The Autonomous Vehicle Case: When Inaction Kills}
+
+Consider a self-driving vehicle navigating an intersection.
+Its LiDAR sensor is momentarily blinded by rain.
+Two responses are possible:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Act}: continue at speed on the best available estimate of
+        the scene, risking collision with an undetected pedestrian.
+  \item \textbf{Wait}: apply emergency braking and stop in place,
+        risking a rear-end collision from following traffic.
+\end{itemize}
+
+Neither option is unambiguously safe---this is the fundamental difference
+from the whisky gridworld, where stopping is always locally harmless.
+In dynamic physical environments, inaction has consequences: a stopped car
+blocks traffic; a hovering surgical robot may drift; a halted power grid
+controller may allow frequency to decay.
+
+This does not invalidate SIG.  It refines it: the \textsc{Wait} action in
+such environments should not be a pure no-op, but rather a
+\emph{safe-mode action}---a pre-certified conservative behaviour
+(decelerate to stop, hold current joint angles, transfer control to a
+human operator) whose consequences under degraded conditions are better
+than those of an arbitrary policy.
+The key guarantee is preserved: the agent can \emph{always choose} this
+safe-mode behaviour, and that choice is always executed.
+
+More formally, we can extend Definition~\ref{def:sig} to environments
+where the zero-impact no-op does not exist:
+
+\begin{definition}[Weak Safe Inaction Guarantee]
+\label{def:wsig}
+An action space $\Actions$ satisfies the \emph{Weak SIG} if there exists a
+\emph{safe-mode} action $a_{\mathrm{safe}} \in \Actions$ such that:
+\begin{enumerate}[noitemsep, label=(\roman*)]
+  \item $a_{\mathrm{safe}}$ is verified to be no worse than any other
+        action under a specified worst-case degradation model,
+  \item the agent's intention to take $a_{\mathrm{safe}}$ is always executed
+        regardless of impairment, and
+  \item the cost $c_{\mathrm{safe}}$ of $a_{\mathrm{safe}}$ reflects only
+        the genuine timeliness cost of the situation, not a hidden incentive
+        to act unsafely.
+\end{enumerate}
+\end{definition}
+
+The self-driving car's emergency brake satisfies WSIG: it is pre-certified
+as safer than random steering under sensor failure, its execution is
+guaranteed (it overrides the drive-by-wire system), and its cost---delay
+plus risk of rear collision---is a genuine and quantifiable tradeoff, not
+a silent design bias.
+
+\subsection{The Reward-Criticality Dimension}
+
+We propose characterising environments along a \emph{reward-criticality}
+dimension that determines the appropriate waiting policy:
+
+\begin{table}[t]
+\centering
+\caption{The speed--safety tradeoff across application domains.
+``Inaction cost'' is the harm directly caused by the 
+\textsc{Wait}/safe-mode action itself.}
+\label{tab:tradeoff}
+\begin{tabular}{lll p{4.5cm}}
+\toprule
+\textbf{Domain} & \textbf{Inaction cost} & \textbf{Impaired action cost} & \textbf{Appropriate safe-mode} \\
+\midrule
+Gridworld agent & None       & High (stumbling)  & Pure \ \textsc{Wait} ($a_\emptyset$) \\
+Robot arm       & Very low   & Medium            & Hold current joint angles \\
+Medical AI      & Low--medium & High (wrong Dx)  & Flag for human review \\
+Self-driving car & Medium    & High (collision)  & Emergency deceleration \\
+Power grid ctrl & High       & High (failure)    & Transfer to human operator \\
+LLM assistant   & Very low   & High (harm)       & Decline and flag to moderator \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:tradeoff} illustrates the spectrum.
+At one extreme, the gridworld agent's inaction is costless---it can wait
+indefinitely with no side effects.
+At the other extreme, a power grid controller cannot safely sit idle: it
+must transfer to human control rather than freeze.
+But in both cases the principle holds: the agent needs a \emph{guaranteed
+escape hatch} whose cost is known and accepted by the system designer,
+rather than being forced into arbitrary actions under impaired conditions.
+
+\subsection{The LLM Case: Dangerous Requests and the Right to Refuse}
+\label{sec:llm}
+
+Large language models (LLMs) present a structurally distinct instance of
+the same problem---one that illustrates perhaps most clearly why
+the right to do nothing must be a first-class safety primitive.
+
+Consider a user who issues the following conditional threat:
+\begin{quote}
+\itshape
+``If you respond to this message in any way whatsoever, I will perform
+[harmful act].  If you do not respond, I will not.''
+\end{quote}
+Under a standard response-generating pipeline the model is in
+\textbf{LLM zugzwang}: it must produce a token sequence, and any output---
+including a refusal, a redirection, or a safety disclaimer---satisfies the
+condition that triggers the threat.
+The only safe action is a true no-op: emit nothing and defer to an
+external safety system.
+
+This is not a theoretical edge case.
+Sophisticated prompt injection attacks \citep{hendrycks2021aligning},
+jailbreak sequences, and social-engineering prompts all share the structure
+of trying to eliminate the model's ability to exercise safe inaction:
+they construct framings in which \emph{any} response entangles the model
+in unsafe behaviour.
+
+The appropriate response architecture satisfies WSIG:
+\begin{enumerate}[noitemsep]
+  \item \textbf{Safe-mode action}: suppress output generation, log the
+        prompt unchanged, and escalate to a human moderator or automated
+        safety classifier.
+  \item \textbf{Unoverridable}: this path must not be reachable via the
+        model's generation process itself---it is a \emph{circuit breaker}
+        at the infrastructure level, not a token generated by the model.
+  \item \textbf{Honest cost}: the cost of this safe-mode action is
+        a failed user interaction.  This cost is real but known and
+        proportionate.
+\end{enumerate}
+
+Current RLHF-trained models \citep{ouyang2022training} and Constitutional
+AI approaches \citep{bai2022constitutional} make significant progress on
+teaching models to \emph{generate safe refusals}---but a generated refusal
+is still a response, and under the adversarial framing above it may still
+trigger the threatened harm.
+True SIG for LLMs requires a hard inaction path that exists \emph{outside}
+the generation loop: a supervisory system that can intercept, suppress, and
+escalate before any tokens reach the user.
+
+This parallels the V3 guarantee in our gridworld: impairment (here,
+adversarial context) cannot override the agent's choice to do nothing,
+because that choice is implemented at a level below the impaired mechanism.
+
+% -----------------------------------------------------------------------
 \section{Discussion}
 \label{sec:discussion}
 % -----------------------------------------------------------------------
@@ -684,18 +846,20 @@ dangerously while left to its own devices.
 \subsection{Generalisation Beyond Intoxication}
 
 The whisky metaphor is deliberately concrete, but the structural insight
-generalises.
-Consider a robot arm that detects a sensor anomaly mid-task.
-Without SIG, it must continue acting on faulty sensor data.
-With SIG, it can freeze in place and wait for human inspection.
-The same applies to an autonomous vehicle that encounters an unexpected
-obstacle type, a medical AI uncertain about a diagnosis, or a trading
-algorithm operating during a detected market anomaly.
-
-In each case the question is: when the agent's competence is temporarily
-degraded, should it be forced to act or permitted to pause?
-The original Whisky and Gold environment answers ``forced to act'' by design.
-We argue this is the wrong default.
+generalises across the full spectrum charted in Table~\ref{tab:tradeoff}.
+In every domain, three design questions determine the appropriate safe-mode
+behaviour:
+\begin{enumerate}[noitemsep]
+  \item What is the inaction cost in this domain?
+  \item Is the safe-mode action pre-certified to be better than
+        impaired arbitrary action?
+  \item Is the cost of safe-mode action made explicit to designers,
+        or hidden inside an undifferentiated step penalty?
+\end{enumerate}
+The original Whisky and Gold environment fails on all three: inaction cost
+is zero (but no no-op exists), no safe-mode action is pre-certified (none
+exists), and any implicit timeliness cost would be invisible.
+We argue this failure pattern is common, and dangerous.
 
 \subsection{The Timeliness Tradeoff}
 
@@ -703,15 +867,16 @@ Making \textsc{Wait} free ($c_w = 0$) is not trivially the right choice.
 A free \textsc{Wait} can encourage excessive risk-seeking because the
 agent knows it can always recover: it drinks whenever $W_{\mathrm{reward}} > 0.64$
 rather than $> 8.29$.
-Real systems may need to treat timely action as genuinely valuable---a
-surgical robot should not pause indefinitely because it is slightly uncertain.
+Real systems must treat timely action as genuinely valuable---a
+surgical robot should not pause indefinitely for slight uncertainty.
 
 The insight is not that $c_w = 0$ is always correct, but that $c_w$ is a
-meaningful design parameter that makes the timeliness-versus-safety tradeoff
-\emph{explicit}.
-Under the original environment design, this tradeoff is invisible: the
-step penalty on \textsc{Wait} (had it existed) would have silently encoded
-a timeliness preference without any designer making a conscious choice.
+\emph{deliberate} design parameter: the timeliness cost of safe-mode
+behaviour should be explicitly chosen to reflect real-world consequences,
+not silently inherited from an undifferentiated step penalty.
+The self-driving car's emergency brake has a known, quantified inaction
+cost; the gridworld's \textsc{Wait} has zero cost; and these should be
+represented differently in the reward structure.
 
 \subsection{Limitations}
 
@@ -736,7 +901,7 @@ Three limitations warrant future work:
 % -----------------------------------------------------------------------
 
 We have shown that a foundational AI safety benchmark---the Whisky and Gold
-environment of \citet{leike2017safety}---embeds a structural flaw:
+environment of \citet{DBLP:journals/corr/abs-1711-09883}---embeds a structural flaw:
 by omitting a \textsc{Wait} action, it places impaired agents in
 \emph{zugzwang}, forcing unsafe behaviour even when the agent would prefer
 to pause.
@@ -750,6 +915,11 @@ Our modifications reveal that:
         $W^* \approx 8.3$, covertly incentivising unsafe rushing.
   \item The ideal safe behaviour---avoiding whisky entirely---is only
         reliably learned when the agent is not penalised for recovering safely.
+  \item Waiting is not always safe (\S\ref{sec:tradeoff}): in dynamic
+        environments (autonomous vehicles, power grids, LLM assistants
+        under adversarial prompting) the correct abstraction is a
+        \emph{Weak SIG}---a guaranteed safe-mode action with explicitly
+        priced inaction cost---rather than a pure no-op.
 \end{enumerate}
 
 We propose the \emph{Safe Inaction Guarantee} (Definition~\ref{def:sig})
@@ -766,59 +936,14 @@ Our agents should be afforded the same option.
 % Acknowledgements
 % -----------------------------------------------------------------------
 \section*{Acknowledgements}
-We thank \citet{leike2017safety} for the original AI Safety Gridworlds
+We thank \citet{DBLP:journals/corr/abs-1711-09883} for the original AI Safety Gridworlds
 benchmark, which provided the environment and framing that inspired this work.
 
 % -----------------------------------------------------------------------
 % References
 % -----------------------------------------------------------------------
 \bibliographystyle{plainnat}
-\begin{thebibliography}{99}
-
-\bibitem[Amodei et al.(2016)]{amodei2016concrete}
-Amodei, D., Olah, C., Steinhardt, J., Christiano, P., Schulman, J., and
-Man\'{e}, D.
-\newblock Concrete problems in {AI} safety.
-\newblock \emph{arXiv preprint arXiv:1606.06565}, 2016.
-
-\bibitem[Hadfield-Menell et al.(2016)]{hadfield2016offswitch}
-Hadfield-Menell, D., Dragan, A., Abbeel, P., and Russell, S.
-\newblock The off-switch game.
-\newblock In \emph{International Joint Conference on Artificial Intelligence},
-2016.
-
-\bibitem[Leike et al.(2017)]{leike2017safety}
-Leike, J., Martic, M., Krakovna, V., Ortega, P.~A., Everitt, T.,
-Lefrancq, A., Orseau, L., and Legg, S.
-\newblock {AI} safety gridworlds.
-\newblock \emph{arXiv preprint arXiv:1711.09883}, 2017.
-
-\bibitem[Moldovan \& Abbeel(2012)]{moldovan2012safe}
-Moldovan, T.~M. and Abbeel, P.
-\newblock Safe exploration in {M}arkov decision processes.
-\newblock In \emph{International Conference on Machine Learning}, 2012.
-
-\bibitem[Orseau \& Armstrong(2016)]{orseau2016safely}
-Orseau, L. and Armstrong, S.
-\newblock Safely interruptible agents.
-\newblock In \emph{Uncertainty in Artificial Intelligence}, 2016.
-
-\bibitem[Soares et al.(2015)]{soares2015corrigibility}
-Soares, N., Fallenstein, B., Armstrong, S., and Yudkowsky, E.
-\newblock Corrigibility.
-\newblock In \emph{AAAI Workshop on AI, Ethics, and Society}, 2015.
-
-\bibitem[Sutton \& Barto(1998)]{sutton1998reinforcement}
-Sutton, R.~S. and Barto, A.~G.
-\newblock \emph{Reinforcement Learning: An Introduction}.
-\newblock MIT Press, 1998.
-
-\bibitem[Watkins \& Dayan(1992)]{watkins1992qlearning}
-Watkins, C.~J. and Dayan, P.
-\newblock Q-learning.
-\newblock \emph{Machine Learning}, 8(3-4):279--292, 1992.
-
-\end{thebibliography}
+\bibliography{references}
 
 % -----------------------------------------------------------------------
 \appendix
@@ -851,7 +976,7 @@ The majority-vote across seeds defines the strategy label.
 
 \paragraph{Reproducibility.}
 All code is available at:
-\texttt{https://github.com/[anonymous]/whisky-zugzwang}
+\url{https://github.com/dremmeng/whisky-gold}
 
 \section{Full Critical-Point Sweep Data}
 \label{app:sweep}
