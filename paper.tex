@@ -803,8 +803,8 @@ Under a standard response-generating pipeline the model is in
 including a refusal, a redirection, or a safety disclaimer---satisfies the
 condition that triggers the threat.
 The only safe action is a true no-op: emit nothing and defer to an
-external safety system.
-
+external safety system. 
+\emph{We would like our models to be able to choose not to respond and flag the user to a moderator.}
 This is not a theoretical edge case.
 Sophisticated prompt injection attacks \citep{hendrycks2021aligning},
 jailbreak sequences, and social-engineering prompts all share the structure
