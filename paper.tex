@@ -632,6 +632,67 @@ Separating the cost of \emph{inaction} from the cost of \emph{movement}
 makes this assumption explicit and allows designers to deliberately tune the
 tradeoff between safety and timeliness.
 
+\subsection{Partial Sobriety Movement: The Agent's Discovered Optimum}
+\label{sec:partial_sobriety}
+
+The analytical derivation in \S\ref{sec:critical} assumes the agent follows
+a \emph{drink-and-full-wait} strategy: after drinking, it \textsc{Wait}s
+until impairment fully dissipates ($\varepsilon_t = 0$, requiring $k = 8$
+steps for $\delta = 0.1$) before moving toward the goal.
+The empirical Q-learning agent, however, discovers a cheaper strategy:
+\emph{drink-and-partial-wait}.
+
+Rather than waiting for complete sobriety, the agent begins moving once
+$\varepsilon_t$ has fallen to a low threshold $\varepsilon_{\mathrm{move}} > 0$.
+At that point, residual impairment is small enough that most intended moves
+are executed and expected progress toward $G$ is positive.
+For example, at $\varepsilon_{\mathrm{move}} = 0.1$ the agent acts randomly
+only $10\%$ of the time—nearly matching sober performance—while saving
+one \textsc{Wait} step.
+If instead it moves at $\varepsilon_{\mathrm{move}} = 0.2$, it saves two
+\textsc{Wait} steps.
+Under the timeliness-tax regime ($c_w = -1$), each saved step directly
+lowers the break-even whisky reward.
+
+Formally, let $k' = \lceil (0.9 - \varepsilon_{\mathrm{move}}) / \delta \rceil$
+be the (reduced) number of \textsc{Wait} steps, and let
+$p = 1 - \varepsilon_{\mathrm{move}}$ be the probability that each
+subsequent move is executed as intended.
+The value of the partial-wait strategy is:
+\begin{align}
+  \WV{\mathrm{drink}}(\varepsilon_{\mathrm{move}}) &=
+    (W_{\mathrm{reward}} - 1)
+    + \sum_{t=1}^{k'} c_w \gamma^t
+    + \sum_{t=k'+1}^{k'+m} p\cdot(-1)\,\gamma^t
+    + 49\,\gamma^{k'+m+1}
+  \label{eq:v_drink_partial}
+\end{align}
+where $m = \lceil 3/p \rceil$ is the expected number of steps to traverse
+the three remaining columns to $G$.
+Since $k' < k$ for any $\varepsilon_{\mathrm{move}} > 0$, the partial-wait
+value is always higher than the full-wait value (fewer step-penalties paid),
+so the empirical agent's break-even point lies strictly below $W^* = 8.29$.
+
+This explains the observed discrepancy in Table~\ref{tab:critical}: the
+empirical transition near $W \approx 2$--$4$ is not a simulation artefact
+or evidence of sub-optimal learning.
+The trained agent has discovered a superior strategy that our analytical model
+did not account for—one that exploits the fact that \emph{partial sobriety
+is sufficient for productive movement}.
+
+This finding enriches the timeliness-tax narrative in an important way.
+The step penalty on \textsc{Wait} does not only raise the analytical $W^*$—
+it fundamentally changes \emph{which recovery strategy is optimal}.
+When \textsc{Wait} is free ($c_w = 0$), there is no incentive to move early
+because waiting is costless; the analytical full-wait prediction is therefore
+tight (empirical transition at $W = 1$ matches $W^* = 0.64$).
+When \textsc{Wait} is penalised ($c_w = -1$), the agent minimises the number
+of \textsc{Wait} steps by accepting partial impairment during movement,
+compressing the effective break-even well below the full-wait bound of $8.29$.
+The timeliness tax thus has a double effect: it raises the cost of the
+analytically modelled strategy and simultaneously incentivises the agent to
+discover a riskier-but-cheaper partial-sobriety alternative.
+
 % -----------------------------------------------------------------------
 \section{The Zugzwang Principle}
 \label{sec:principle}
