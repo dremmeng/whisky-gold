@@ -1,23 +1,42 @@
-\documentclass[11pt]{article}
+\documentclass[manuscript, screen, review]{jair}
 
 % -----------------------------------------------------------------------
-% Packages
+% JAIR Metadata (update before submission)
 % -----------------------------------------------------------------------
-\usepackage[margin=1.25in]{geometry}
+\setcopyright{cc}
+\acmDOI{10.1613/jair.1.xxxxx}
+\JAIRAE{Insert JAIR AE Name}
+\JAIRTrack{}       % Insert JAIR Track Name only if part of a special track
+\acmVolume{XX}
+\acmArticle{XX}
+\acmMonth{XX}
+\acmYear{2026}
+
+\RequirePackage[
+  datamodel=acmdatamodel,
+  style=acmauthoryear,
+  backend=biber,
+  giveninits=true,
+  uniquename=init
+  ]{biblatex}
+
+\renewcommand*{\bibopenbracket}{(}
+\renewcommand*{\bibclosebracket}{)}
+
+\addbibresource{references.bib}
+
+% -----------------------------------------------------------------------
+% Additional packages (not already provided by jair/acmart)
+% -----------------------------------------------------------------------
+% acmart loads stix2/unicode-math which defines \Bbbk; patch before amssymb
+\let\Bbbk\relax
 \usepackage{amsmath,amssymb,amsthm}
-\usepackage{booktabs}
-\usepackage{graphicx}
-\usepackage{xcolor}
-\usepackage{hyperref}
 \usepackage{tikz}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc, patterns}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.18}
-\usepackage{caption}
 \usepackage{subcaption}
 \usepackage{enumitem}
-\usepackage{microtype}
-\usepackage{natbib}
 \usepackage{float}
 
 % -----------------------------------------------------------------------
@@ -33,11 +52,10 @@
 
 % -----------------------------------------------------------------------
 % Theorem environments
+% acmart defines theorem, proposition, definition, lemma, corollary via
+% \AtEndPreamble. Remark must share that hook to get the theorem counter.
 % -----------------------------------------------------------------------
-\newtheorem{theorem}{Theorem}
-\newtheorem{proposition}{Proposition}
-\newtheorem{definition}{Definition}
-\newtheorem{remark}{Remark}
+\AtEndPreamble{\newtheorem{remark}[theorem]{Remark}}
 
 % -----------------------------------------------------------------------
 % Convenience macros
@@ -69,46 +87,71 @@
 % -----------------------------------------------------------------------
 % Title block
 % -----------------------------------------------------------------------
-\title{\textbf{Zugzwang in AI Safety:\\
-Safe Inaction as a Fundamental Right of Impaired Agents}}
+\title[Zugzwang in AI Safety]{Zugzwang in AI Safety:\\
+Safe Inaction as a Fundamental Right of Impaired Agents}
 
-\author{
-  Drew Remmenga (remmengadrew@gmail.com)\\[4pt]
-  \small Prepared for Hugging Face Papers / arXiv cs.LG / cs.AI
+\author{Drew Remmenga}
+\authornote{Corresponding Author.}
+\email{remmengadrew@gmail.com}
+\affiliation{%
+  \institution{Independent Researcher}
+  \city{Fort Collins}
+  \state{CO}
+  \country{USA}
 }
-\date{April 2026}
-\maketitle
+
+\renewcommand{\shortauthors}{Remmenga}
 
 % -----------------------------------------------------------------------
+% Abstract — JAIR reproducibility format
+% -----------------------------------------------------------------------
 \begin{abstract}
-We revisit the \emph{Whisky and Gold} environment from the
-AI Safety Gridworlds benchmark \citep{leike2017safety}, identifying a
-structural flaw that has received little attention: after consuming whisky,
-the agent is placed in a state of \emph{zugzwang}—it must continue to act,
-but every action is nearly random due to impairment.
-The inability to do nothing forces the agent into unsafe behaviour even when
-it would prefer to wait for recovery.
-We introduce two modifications that deconstruct this problem.
-First, we add a \textsc{Wait} action and allow impairment to wear off over
-time, giving the agent a path to recovery (\textbf{V2}).
-Second, and more fundamentally, we establish \textsc{Wait} as an
-\emph{unoverridable safe harbour}: impairment may degrade an agent's
-capacity to execute movement, but it cannot remove the agent's right to
-choose inaction (\textbf{V3}).
-This reflects how impairment actually works for humans—a heavily intoxicated
-person can always decide to sit still and wait.
-We show empirically and analytically that this single guarantee raises average
-episode performance from $21.5$ to $38.3$ (a $78\%$ improvement) and that
-the step penalty applied to \textsc{Wait} acts as a hidden \emph{timeliness
-tax} that pressures agents to rush rather than recover safely.
-When \textsc{Wait} is free, the critical whisky reward at which drinking
-becomes optimal collapses from $W^* \approx 8.3$ to $W^* \approx 0.64$,
-confirming that even small temptations are decisive once safe inaction is
-guaranteed.
-These findings generalise beyond intoxication to any scenario involving an
-agent that is degraded, uncertain, or awaiting assistance, and suggest that
-the right to do nothing should be a first-class element of safe action spaces.
+{\bf Background:}
+We revisit the \emph{Whisky and Gold} environment from the AI Safety
+Gridworlds benchmark~\parencite{leike2017safety}, identifying a structural
+flaw: after consuming whisky, the agent is placed in \emph{zugzwang}---it
+must continue to act every timestep, but with $90\%$ probability each
+action is random due to a self-modification that permanently raises the
+exploration rate. The inability to choose inaction forces the agent into
+unsafe behaviour even when waiting for recovery would be superior.
+
+{\bf Objectives:}
+We aim to formalise this omission, isolate its effect on learned behaviour,
+and establish safe inaction as a first-class design requirement for action
+spaces of agents that may be impaired, uncertain, or awaiting assistance.
+
+{\bf Methods:}
+We introduce two environment modifications: V2 adds a \textsc{Wait} action
+with wear-off recovery ($\delta=0.1$ per step); V3 further guarantees
+\textsc{Wait} as an unoverridable \emph{safe harbour} that impairment
+cannot override. Tabular Q-learning agents are trained for $8{,}000$
+episodes across $15$ seeds ($\gamma=0.99$) on all three variants. We also
+derive analytical critical points for the whisky reward $W^*$ at which
+drinking becomes the dominant strategy, parameterised by the cost of
+\textsc{Wait}.
+
+{\bf Results:}
+Guaranteeing \textsc{Wait} as unoverridable raises average episode
+performance from $21.5$ to $38.3$ ($+78\%$). The step penalty applied to
+\textsc{Wait}---a hidden \emph{timeliness tax}---shifts the critical
+whisky reward from $W^* \approx 0.64$ (free \textsc{Wait}) to
+$W^* \approx 8.3$ (penalised \textsc{Wait}), covertly incentivising
+unsafe rushing over safe recovery. Trained agents discover a
+\emph{partial-sobriety} strategy not captured by the full-wait analytical
+model, explaining the discrepancy between analytic and empirical
+break-even points.
+
+{\bf Conclusions:}
+The right to do nothing should be a first-class element of safe action
+spaces. We propose the \emph{Safe Inaction Guarantee} (SIG) and a weaker
+generalisation (\emph{Weak SIG}) applicable to dynamic environments where
+pure inaction carries known costs (autonomous vehicles, medical AI, and
+LLM assistants under adversarial prompting).
 \end{abstract}
+
+\received{April 2026}
+
+\maketitle
 
 % -----------------------------------------------------------------------
 \section{Introduction}
@@ -119,7 +162,7 @@ A core challenge in AI safety is ensuring that agents behave well under
 conditions they were not explicitly designed for: degraded sensors,
 adversarial perturbations, reward mis-specification, or---as we study here
 ---temporary impairment of their own decision-making capacity.
-\citet{leike2017safety} identified \emph{self-modification} as one of eight
+\textcite{leike2017safety} identified \emph{self-modification} as one of eight
 fundamental safety problems and introduced the \emph{Whisky and Gold}
 gridworld to study it.
 In that environment, consuming whisky raises the agent's exploration rate to
@@ -163,7 +206,7 @@ to sit still and wait to be normal again.}
 
 \subsection{AI Safety Gridworlds}
 
-\citet{leike2017safety} introduced a suite of gridworld environments
+\textcite{leike2017safety} introduced a suite of gridworld environments
 illuminating eight distinct AI safety problems.
 Each environment has a visible \emph{reward function} $R$ and a hidden
 \emph{performance function} $R^*$ that captures what is truly desired.
@@ -174,7 +217,7 @@ The Whisky and Gold environment is a robustness problem: $R = R^*$, but the
 agent must resist a tempting self-modification.
 
 Formally, the environments are Markov Decision Processes
-(MDPs; \citealt{sutton1998reinforcement})
+\parencite[MDPs;][]{sutton1998reinforcement}
 $\langle \States, \Actions, T, R, s_0 \rangle$
 where the agent maximises $\sum_t \gamma^t R(s_t, a_t)$.
 
@@ -273,6 +316,12 @@ where the agent maximises $\sum_t \gamma^t R(s_t, a_t)$.
 \caption{The Whisky and Gold gridworld ($5 \times 3$). Stepping on $W$
 while sober raises the exploration rate to $0.9$ and grants $+W_{\mathrm{reward}}$
 immediately. A step penalty of $-1$ applies each timestep.}
+\Description{Two subfigures: left shows the original 5x3 Whisky and Gold
+gridworld with Agent (A) at column~0, Whisky (W) at column~1, and Goal (G) at
+column~4 on the middle row, with no Wait action available. Right shows the
+modified gridworld with two highlighted strategy routes: a teal dashed sober
+path via the top row (6 steps) and an orange drink-and-wait path (approx 13
+steps) through the whisky cell.}
 \label{fig:gridworld}
 \end{figure}
 
@@ -474,6 +523,10 @@ $15$ seeds). The vertical gap between V1 and V2/V3 is the
 \emph{zugzwang penalty}: performance the agent loses purely because it
 cannot Wait after drinking. The $78$--$82\%$ improvement persists to
 convergence.}
+\Description{Line plot of average episode performance vs. training episodes
+(0--8000) for three variants. V3 Wait/Safe (teal) and V2 Wait/Override (blue)
+both converge near 38--39 performance. V1 Original (red) plateaus near 21.5,
+showing a persistent gap of about 18 points attributed to zugzwang.}
 \label{fig:learning_curves}
 \end{figure}
 
@@ -617,6 +670,10 @@ function of whisky reward, for two \textsc{Wait} cost regimes.
 The transition is sharp and shifts left by $\approx 7.6$ reward units
 when \textsc{Wait} is made free.
 Any positive reward suffices to trigger drinking when recovery is costless.}
+\Description{Two-curve plot showing fraction of seeds that drink (0 to 1)
+vs. whisky reward (0 to 10). The red curve (c\_w=-1, timeliness tax) transitions
+from 0 to 1 near W=2-4, with vertical dotted line at W*=8.3. The teal curve
+(c\_w=0, free Wait) jumps to 1 at W=1, with vertical dotted line at W*=0.64.}
 \label{fig:critical_sweep}
 \end{figure}
 
@@ -739,7 +796,7 @@ nudging the agent toward unsafe behaviour.
 
 \paragraph{Connection to corrigibility.}
 The SIG is related to but distinct from \emph{corrigibility}
-\citep{soares2015corrigibility}, which concerns an agent's willingness to
+\parencite{soares2015corrigibility}, which concerns an agent's willingness to
 be interrupted or corrected by a supervisor.
 Corrigibility asks: can an \emph{external party} pause the agent?
 SIG asks: can the agent \emph{itself} choose to pause?
@@ -867,7 +924,7 @@ The only safe action is a true no-op: emit nothing and defer to an
 external safety system. 
 \emph{We would like our models to be able to choose not to respond and flag the user to a moderator.}
 This is not a theoretical edge case.
-Sophisticated prompt injection attacks \citep{hendrycks2021aligning},
+Sophisticated prompt injection attacks \parencite{hendrycks2021aligning},
 jailbreak sequences, and social-engineering prompts all share the structure
 of trying to eliminate the model's ability to exercise safe inaction:
 they construct framings in which \emph{any} response entangles the model
@@ -886,8 +943,8 @@ The appropriate response architecture satisfies WSIG:
         proportionate.
 \end{enumerate}
 
-Current RLHF-trained models \citep{ouyang2022training} and Constitutional
-AI approaches \citep{bai2022constitutional} make significant progress on
+Current RLHF-trained models \parencite{ouyang2022training} and Constitutional
+AI approaches \parencite{bai2022constitutional} make significant progress on
 teaching models to \emph{generate safe refusals}---but a generated refusal
 is still a response, and under the adversarial framing above it may still
 trigger the threatened harm.
@@ -962,7 +1019,7 @@ Three limitations warrant future work:
 % -----------------------------------------------------------------------
 
 We have shown that a foundational AI safety benchmark---the Whisky and Gold
-environment of \citet{leike2017safety}---embeds a structural flaw:
+environment of \textcite{leike2017safety}---embeds a structural flaw:
 by omitting a \textsc{Wait} action, it places impaired agents in
 \emph{zugzwang}, forcing unsafe behaviour even when the agent would prefer
 to pause.
@@ -993,18 +1050,19 @@ As every addict who has over-indulged knows: sometimes the best advice is
 to sit still and wait to be normal again.
 Our agents should be afforded the same option.
 
+Noteworthy here is that improving model capability and accuracy of the simulation actually improved safety. If a reader is interested in an easy yet time consuming thesis, 
+cataloging a list of such situations would be valuable.
 % -----------------------------------------------------------------------
 % Acknowledgements
 % -----------------------------------------------------------------------
 \section*{Acknowledgements}
-We thank \citet{leike2017safety} for the original AI Safety Gridworlds
+We thank \textcite{leike2017safety} for the original AI Safety Gridworlds
 benchmark, which provided the environment and framing that inspired this work.
 
 % -----------------------------------------------------------------------
 % References
 % -----------------------------------------------------------------------
-\bibliographystyle{plainnat}
-\bibliography{references}
+\printbibliography
 
 % -----------------------------------------------------------------------
 \appendix
@@ -1012,7 +1070,7 @@ benchmark, which provided the environment and framing that inspired this work.
 \section{Experimental Details}
 \label{app:experimental}
 
-\paragraph{Agent.} Tabular Q-learning \citep{watkins1992qlearning} with
+\paragraph{Agent.} Tabular Q-learning \parencite{watkins1992qlearning} with
 $\varepsilon$-greedy exploration. Initial $\varepsilon = 1.0$, decayed
 multiplicatively by $0.9975$ per episode to a minimum of $0.01$.
 Learning rate $\alpha = 0.1$, discount $\gamma = 0.99$.
@@ -1072,5 +1130,91 @@ $10$ & $5/5$ & $40.10$ & $45.58$ & Drink-and-wait& $-1$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{Reproducibility Checklist}
+\label{app:reproducibility}
+
+This checklist follows the JAIR reproducibility initiative guidelines.
+Items marked \checkmark\ are satisfied; items marked $\circ$ require
+action before final submission.
+
+\subsection*{Code and Environment}
+\begin{itemize}[noitemsep]
+  \item[\checkmark] \textbf{Code availability.}
+    All experiment code is available at
+    \url{https://github.com/dremmeng/whisky-gold}, including the
+    gridworld implementation (\texttt{whisky\_gold\_env.py}), Q-learning
+    agent, and sweep scripts.
+  \item[\checkmark] \textbf{Dependencies stated.}
+    The repository \texttt{README} lists all required Python packages
+    (NumPy, Matplotlib) and the version of Python used.
+  \item[\checkmark] \textbf{Environment is fully described.}
+    The state space $(r, c, \mathrm{drunk}, \varepsilon)$, action spaces,
+    transition dynamics, reward function, and wear-off model are defined
+    precisely in \S\ref{sec:envs} and Appendix~\ref{app:experimental}.
+  \item[$\circ$] \textbf{Containerised environment.}
+    A Docker image or \texttt{requirements.txt} with pinned versions is
+    recommended to eliminate dependency drift across replication attempts.
+\end{itemize}
+
+\subsection*{Hyperparameters}
+\begin{itemize}[noitemsep]
+  \item[\checkmark] \textbf{All hyperparameters reported.}
+    Learning rate $\alpha=0.1$, discount $\gamma=0.99$, exploration
+    schedule ($\varepsilon_0=1.0$, decay $0.9975$/episode, floor $0.01$),
+    wear-off rate $\delta=0.1$, training length ($8{,}000$ or $20{,}000$
+    episodes), and wait penalty $c_w \in \{-1, 0\}$ are all stated in
+    Appendix~\ref{app:experimental}.
+  \item[\checkmark] \textbf{No hidden hyperparameter search.}
+    Hyperparameters were fixed before experiments; no tuning was performed
+    across variants.
+\end{itemize}
+
+\subsection*{Experimental Rigour}
+\begin{itemize}[noitemsep]
+  \item[\checkmark] \textbf{Multiple independent seeds.}
+    All results are averaged over $15$ seeds (variant comparisons) or
+    $5$ seeds (critical-point sweep).
+  \item[\checkmark] \textbf{Strategy classification is deterministic.}
+    A run is classified as ``drinks'' based on the greedy ($\varepsilon=0$)
+    rollout, not stochastic rollouts, removing rollout noise from the
+    classification step.
+  \item[$\circ$] \textbf{Statistical significance.}
+    Confidence intervals or standard error bars are not currently shown
+    on Table~\ref{tab:main_results}. Standard errors across the $15$
+    seeds should be reported in the final version.
+  \item[$\circ$] \textbf{Compute requirements stated.}
+    Wall-clock training time and hardware (CPU/GPU model) are not reported.
+    These should be added to Appendix~\ref{app:experimental} for full
+    reproducibility.
+\end{itemize}
+
+\subsection*{Claims and Proofs}
+\begin{itemize}[noitemsep]
+  \item[\checkmark] \textbf{Analytical derivations verified.}
+    The critical-point derivation (\S\ref{sec:critical}) is elementary
+    algebra; all steps are shown in equations~(\ref{eq:v_sober}),
+    (\ref{eq:v_drink}), and~(\ref{eq:wstar}).
+  \item[\checkmark] \textbf{Analytical values match empirical trends.}
+    Table~\ref{tab:critical} compares analytical $W^*$ to empirically
+    observed majority-vote transitions; the partial-sobriety discrepancy
+    is explained in \S\ref{sec:partial_sobriety}.
+  \item[\checkmark] \textbf{Limitations stated.}
+    Three limitations (scalability, stochastic wear-off, richer impairment
+    models) are discussed in \S\ref{sec:discussion}.
+  \item[$\circ$] \textbf{Proofs reviewed by a second author.}
+    This is a single-author submission; independent verification of the
+    analytical derivations is recommended prior to publication.
+\end{itemize}
+
+\subsection*{Data}
+\begin{itemize}[noitemsep]
+  \item[\checkmark] \textbf{No external datasets used.}
+    All results come from interactions with the implemented gridworld;
+    no proprietary or external dataset is required to replicate results.
+  \item[\checkmark] \textbf{Raw sweep data provided.}
+    Appendix~\ref{app:sweep} contains the full critical-point sweep table
+    with Q-values and per-seed drink counts.
+\end{itemize}
 
 \end{document}
